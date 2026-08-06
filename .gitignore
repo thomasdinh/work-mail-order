@@ -1,1 +1,4 @@
 email-order.env
+credentials.json
+__pycache__/email.cpython-313.pyc
+token.json

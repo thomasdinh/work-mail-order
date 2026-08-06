@@ -1,103 +1,75 @@
-# work-mail-order
-# Gmail MCP Server
+# Order Tracking & Billing Tool
 
-An MCP (Model Context Protocol) server that lets an AI client (Claude Desktop,
-Claude Code, etc.) read your Gmail inbox — list folders, list recent emails,
-search, and fetch full email content.
+Tracks orders (from Gmail + manual entry), classifies incoming email
+(order/complaint/help/reminder), tags orders as private vs company,
+and bills people grouped by a chosen time window.
 
-It connects over **IMAP** using a **Gmail App Password**, so there's no
-Google Cloud project or OAuth consent screen to set up.
+## Setup
 
-## 1. Set up a Gmail App Password
+    cd order_billing_tool
+    pip install -r requirements.txt
 
-1. Turn on 2-Step Verification on your Google account, if not already on:
-   https://myaccount.google.com/security
-2. Go to https://myaccount.google.com/apppasswords
-3. Create an app password (name it e.g. "MCP Server") and copy the
-   16-character code. This is what you'll use as `EMAIL_APP_PASSWORD` —
-   **not** your regular Google password.
-4. Make sure IMAP is enabled: Gmail → Settings → "See all settings" →
-   "Forwarding and POP/IMAP" → Enable IMAP.
+Point at a shared Postgres database (recommended for a team):
 
-(Works with any IMAP mailbox, not just Gmail — just set `IMAP_HOST`
-accordingly, e.g. `imap.mail.yahoo.com` or `outlook.office365.com`.)
+    export DATABASE_URL="postgresql+psycopg2://user:pass@host:5432/orders"
 
-## 2. Install dependencies
+Or, for local testing only (not multi-user safe):
 
-```bash
-python3 -m venv venv
-source venv/bin/activate        # on Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
+    export DATABASE_URL="sqlite:///./orders_dev.db"
 
-> Note: `pip install mcp` alone may pull a newer major version (2.x) of the
-> SDK with a different API. `requirements.txt` pins `mcp<2.0.0`, which is
-> the version this server is written against.
+## Run the API (for the support team)
 
-## 3. Configure credentials
+    uvicorn app.api:app --reload --host 0.0.0.0 --port 8000
 
-Set these environment variables (however you normally do — a `.env` file
-with `python-dotenv`, your shell profile, or your MCP client's config):
+Docs at http://localhost:8000/docs (FastAPI auto-generates a UI to try
+every endpoint).
 
-| Variable              | Required | Description                              |
-|-----------------------|----------|-------------------------------------------|
-| `EMAIL_ADDRESS`       | yes      | your mailbox address, e.g. `me@gmail.com` |
-| `EMAIL_APP_PASSWORD`  | yes      | the 16-char app password from step 1      |
-| `IMAP_HOST`           | no       | defaults to `imap.gmail.com`              |
-| `IMAP_PORT`           | no       | defaults to `993`                         |
+## Register companies
 
-## 4. Run it standalone (sanity check)
+Before automatic company detection works, add each company's email
+domain, e.g. via a quick Python shell:
 
-```bash
-EMAIL_ADDRESS=me@gmail.com EMAIL_APP_PASSWORD=xxxxxxxxxxxxxxxx python3 gmail_mcp_server.py
-```
+    from app.db import SessionLocal, init_db
+    from app.models import Company
+    init_db()
+    s = SessionLocal()
+    s.add(Company(name="Acme Inc", domain="acme.com", billing_email="billing@acme.com"))
+    s.commit()
 
-It should sit and wait, communicating over stdio — that's normal for an
-MCP server; it's meant to be launched by an MCP client, not used directly
-in a terminal.
+Any order email from/to an @acme.com address will now be auto-tagged
+as a company order for Acme Inc; everything else defaults to private.
 
-## 5. Connect it to Claude Desktop
+## Ingest Gmail automatically
 
-Add this to your `claude_desktop_config.json`
-(macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`,
-Windows: `%APPDATA%\Claude\claude_desktop_config.json`):
+Needs credentials.json (see gmail_client.py docstring) in this folder.
 
-```json
-{
-  "mcpServers": {
-    "gmail": {
-      "command": "/absolute/path/to/venv/bin/python3",
-      "args": ["/absolute/path/to/gmail_mcp_server.py"],
-      "env": {
-        "EMAIL_ADDRESS": "me@gmail.com",
-        "EMAIL_APP_PASSWORD": "xxxxxxxxxxxxxxxx"
-      }
-    }
-  }
-}
-```
+    python ingest_gmail.py --query "newer_than:1d" --max 50
 
-Restart Claude Desktop. You should see a 🔨 tools icon showing the four
-tools below available in chat.
+Run this on a schedule (cron / Task Scheduler) to keep pulling in new
+order emails. Non-order emails (complaints/help/reminders) are
+classified but not turned into orders -- route those to your ticketing
+system separately if you want that automated too.
 
-## Tools exposed
+## Review before billing
 
-| Tool | Description |
-|---|---|
-| `list_folders()` | List available mail folders/labels (INBOX, Sent, etc.) |
-| `list_recent_emails(folder="INBOX", limit=10)` | Most recent emails, headers only |
-| `search_emails(query, from_address, subject, folder, since, before, limit)` | Filtered search |
-| `get_email(email_id, folder="INBOX")` | Full body + attachment list for one email |
+Orders the extractor couldn't confidently parse (e.g. no amount found)
+are flagged `needs_review=1` and excluded from billing by default.
+Check them via `GET /orders/needs_review` and correct/clear them first.
 
-Typical flow: call `list_recent_emails` or `search_emails` to get an `id`,
-then call `get_email(id)` to read the full message.
+## Run billing
 
-## Security notes
+    POST /billing/preview   -- see invoices for a window without committing
+    POST /billing/finalize  -- lock it in, marks those orders "invoiced"
 
-- The app password only grants mail access, but treat it like a real
-  credential — don't commit it, don't hardcode it in the script.
-- This server opens a **read-only** IMAP session (`readonly=True` on
-  select) — it cannot delete, send, or modify email, only read it.
-- If you want the AI to also **send** email, that's a separate,
-  higher-risk tool (SMTP) intentionally not included here — happy to add
-  it as an explicit, separately-confirmed tool if you want it.
+Each person gets a separate invoice per order_type, so someone who
+ordered both privately and via their company in the same window gets
+two invoices, not one mixed one.
+
+## What's still a design choice for you
+
+- Mixed currencies per person in one window aren't auto-converted --
+  flagged as "MIXED" so you handle it deliberately.
+- The email keyword lists in app/email_classifier.py are a starting
+  point; tune them against your real inbox traffic.
+- No auth on the API yet -- add something (even basic auth behind a
+  VPN) before exposing it beyond localhost.
