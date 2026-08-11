@@ -2,3 +2,7 @@ email-order.env
 credentials.json
 __pycache__/email.cpython-313.pyc
 token.json
+src/ports/__pycache__/gmail_client.cpython-313.pyc
+src/ports/__pycache__/GmailClient.cpython-313.pyc
+src/ports/__pycache__/message_source.cpython-313.pyc
+src/ports/__pycache__/MessageSource.cpython-313.pyc
