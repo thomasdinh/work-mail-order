@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: work-mail-order
+Version: 0.1.0
+Requires-Python: >=3.13
+Requires-Dist: google-api-python-client
+Requires-Dist: google-auth
+Requires-Dist: google-auth-oauthlib
+Requires-Dist: mcp
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: python-dotenv
+Requires-Dist: pydantic

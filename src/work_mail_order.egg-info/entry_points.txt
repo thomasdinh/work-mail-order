@@ -1,0 +1,2 @@
+[console_scripts]
+work-mail-order-server = work_mail_order.entrypoints.mcp_server.server:main

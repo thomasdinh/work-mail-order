@@ -6,3 +6,9 @@ src/ports/__pycache__/gmail_client.cpython-313.pyc
 src/ports/__pycache__/GmailClient.cpython-313.pyc
 src/ports/__pycache__/message_source.cpython-313.pyc
 src/ports/__pycache__/MessageSource.cpython-313.pyc
+.venv/
+__pycache__/
+*.pyc
+config/credentials.json
+config/token.json
+.env

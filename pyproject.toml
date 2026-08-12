@@ -1,0 +1,24 @@
+[project]
+name = "work-mail-order"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "google-api-python-client",
+    "google-auth",
+    "google-auth-oauthlib",
+    "mcp",
+    "fastapi",
+    "uvicorn",
+    "python-dotenv",
+    "pydantic"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+work-mail-order-server = "work_mail_order.entrypoints.mcp_server.server:main"
