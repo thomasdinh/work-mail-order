@@ -1,7 +1,8 @@
 README.md
 pyproject.toml
-src/ports/gmail_message_source.py
 src/work_mail_order/__init__.py
+src/work_mail_order/bootstrap.py
+src/work_mail_order/main.py
 src/work_mail_order.egg-info/PKG-INFO
 src/work_mail_order.egg-info/SOURCES.txt
 src/work_mail_order.egg-info/dependency_links.txt
@@ -11,10 +12,12 @@ src/work_mail_order.egg-info/top_level.txt
 src/work_mail_order/adapters/__init__.py
 src/work_mail_order/adapters/gmail/__init__.py
 src/work_mail_order/adapters/gmail/gmail_client.py
+src/work_mail_order/adapters/gmail/gmail_message_source.py
 src/work_mail_order/application/__init__.py
 src/work_mail_order/application/ports/__init__.py
 src/work_mail_order/application/ports/message_source.py
 src/work_mail_order/application/use_cases/__init__.py
+src/work_mail_order/application/use_cases/fetch_new_messages.py
 src/work_mail_order/domain/__init__.py
 src/work_mail_order/entrypoints/__init__.py
 src/work_mail_order/entrypoints/mcp_server/__init__.py

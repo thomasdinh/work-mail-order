@@ -1,7 +1,21 @@
 # ports/message_source.py
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional
 
+
+@dataclass
+class Message:
+    """Generic, vendor-agnostic message shape used across the application core."""
+    id: str
+    source: str
+    sender: str
+    subject: str
+    body: str
+    received_at: datetime = field(default_factory=datetime.utcnow)
 
 
 class MessageSource(ABC):
